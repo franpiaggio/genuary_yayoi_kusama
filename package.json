@@ -1,0 +1,21 @@
+{
+  "name": "genuary-yayoi-kusama",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0"
+  },
+  "dependencies": {
+    "lil-gui": "^0.17.0",
+    "p5": "^1.5.0",
+    "p5i": "^0.4.2",
+    "postprocessing": "^6.29.2",
+    "three": "^0.148.0"
+  }
+}
