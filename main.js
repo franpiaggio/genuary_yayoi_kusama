@@ -81,7 +81,6 @@ unrealBloomPass.threshold = 0.1
 /**
  * Lights
  */
-
 const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.02 );
 directionalLight.position.set(0,0.2,4.42)
 scene.add( directionalLight );
