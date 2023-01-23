@@ -229,9 +229,10 @@ const sketch = (s) => {
   s.draw = () => {
     s.background("#E6A409")
     s.background("#E6A409")
-    circles.pos.forEach( c => {
+    circles.pos.forEach( (c, index) => {
       s.fill(5)
-      s.circle(c.x, c.y, c.z)
+      const size = s.map(Math.sin(s.frameCount * 0.05), -1, 1, c.z - 50, c.z - 10)
+      s.circle(c.x, c.y, size)
     })
   }
 }
