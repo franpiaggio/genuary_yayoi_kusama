@@ -1,211 +1,239 @@
 import './style.css'
+import p5 from 'p5';
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
+import Packing from './packing'
 
-import p5 from 'p5';
+// https://tympanus.net/codrops/2021/10/27/creating-the-effect-of-transparent-glass-and-plastic-in-three-js/
 
+/**
+ * Base
+ */
+// Canvas
 const canvas = document.querySelector('canvas.webgl')
-const scene = new THREE.Scene()
-let RenderTargetClass = null
-let effectComposer
 
+// Scene
+const scene = new THREE.Scene()
+
+/**
+ * Sizes
+ */
 const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
 
 window.addEventListener('resize', () => {
+    // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
+
+    // Update camera
     camera.aspect = sizes.width / sizes.height
     camera.updateProjectionMatrix()
+
+    // Update renderer
     renderer.setSize(sizes.width, sizes.height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
-/*
-* Main Camera
-*/
+/**
+ * Camera
+ */
+// Base camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, -0.2, 2)
+camera.position.z = 7
+camera.position.y = 3
 scene.add(camera)
 
-/*
-* Controls
-*/
+// Controls
 const controls = new OrbitControls(camera, canvas)
+// controls.enabled = false
 controls.enableDamping = true
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
-})
+
+const axesHelper = new THREE.AxesHelper( 10 );
+axesHelper.position.y = 0.01
+// scene.add( axesHelper );
+
+/**
+ * Cube
+ */
+const box_material = new THREE.MeshPhysicalMaterial({})
+box_material.reflectivity = 0
+box_material.transmission = 1.0
+box_material.roughness = 0.1
+box_material.metalness = 0.1
+box_material.clearcoat = 0.3
+box_material.clearcoatRoughness = 0.25
+box_material.color = new THREE.Color(0xffffff)
+box_material.ior = 1.2
+box_material.thickness = 10.0
+
+const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(1.4, 1.4, 1.4),
+    box_material
+)
+cube.position.y = 0.6;
+cube.rotateY(1)
+cube.receiveShadow = true;
+cube.castShadow = true
+
+
+scene.add(cube)
 
 /*
-* POSTPRO
+* Lights
 */
-if(renderer.getPixelRatio() === 1 && renderer.capabilities.isWebGL2){
-  RenderTargetClass = THREE.WebGLRenderTarget 
-  console.log('Using WebGLMultisampleRenderTarget')
-}else{
-  RenderTargetClass = THREE.WebGLRenderTarget
-  console.log('Using WebGLRenderTarget')
+const ambient_light = new THREE.AmbientLight("#E6A409", 0.2)
+scene.add(ambient_light)
+
+/*
+* SpotLights
+*/
+const spotLight_right = new THREE.SpotLight( 0xffffff, 40, 12, 1.2, 1, 4 );
+spotLight_right.castShadow = true;
+spotLight_right.position.set( 2, 5, 0 );
+spotLight_right.castShadow = true;
+spotLight_right.shadow.mapSize.width = 1920;
+spotLight_right.shadow.mapSize.height = 1080;
+spotLight_right.shadow.camera.near = 0.8;
+spotLight_right.shadow.camera.far = 10;
+spotLight_right.shadow.focus = 1.5
+scene.add( spotLight_right );
+
+
+
+// const spotLightHelperRight = new THREE.SpotLightHelper( spotLight_right );
+// scene.add( spotLightHelperRight );
+
+/**
+ * Planes
+ */
+const wall_sizes = {
+  w: 6,
+  h: 6
+}
+const wall_geometry = new THREE.PlaneGeometry(wall_sizes.w, wall_sizes.h);
+
+let canvasTexture
+const init_walls = (cnv) => {
+
+  canvasTexture = new THREE.CanvasTexture(cnv)
+  const wall_material = new THREE.MeshPhysicalMaterial(
+    { 
+      color: "#E6A409",
+      map: canvasTexture,
+    }
+  )
+
+  // Botom top
+  const bottom_wall = new THREE.Mesh(wall_geometry,wall_material)
+  bottom_wall.rotateX(-Math.PI / 2)
+  bottom_wall.receiveShadow = true
+  scene.add(bottom_wall)
+  const top_wall = new THREE.Mesh(wall_geometry,wall_material)
+  top_wall.position.set(0, wall_sizes.w, 0 )
+  top_wall.rotateX(-Math.PI / 2)
+  top_wall.rotateY(Math.PI)
+  top_wall.receiveShadow = true
+  scene.add(top_wall)
+  
+  // Left right
+  const left_wall = new THREE.Mesh(wall_geometry,wall_material)
+  left_wall.position.set(-(wall_sizes.w/2),wall_sizes.w/2,0)
+  left_wall.rotateY(Math.PI / 2)
+  left_wall.receiveShadow = true;
+  scene.add(left_wall)
+  const right_wall = new THREE.Mesh(wall_geometry,wall_material)
+  right_wall.position.set(wall_sizes.w/2,wall_sizes.w/2, 0)
+  right_wall.receiveShadow = true;
+  right_wall.rotateY(-Math.PI / 2)
+  scene.add(right_wall)
+
+  // Back y front
+  const back_wall = new THREE.Mesh(wall_geometry,wall_material)
+  back_wall.position.set(0,wall_sizes.w/2,-wall_sizes.w/2)
+  back_wall.receiveShadow = true;
+  scene.add(back_wall)
+  const front_wall = new THREE.Mesh(wall_geometry,wall_material)
+  front_wall.position.set(0,wall_sizes.w/2,wall_sizes.w/2)
+  front_wall.rotateY(Math.PI)
+  front_wall.receiveShadow = true;
+  scene.add(front_wall)
 }
 
-const targetConfigs = {
-  minFilter: THREE.LinearFilter,
-  magFilter: THREE.LinearFilter,
-  format: THREE.RGBAFormat
-}
-const renderTarget = new RenderTargetClass(800,600, targetConfigs)
 
 
-effectComposer = new EffectComposer(renderer, renderTarget)
-effectComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-effectComposer.setSize(sizes.width, sizes.height)
-const renderPass = new RenderPass(scene, camera)
-effectComposer.addPass(renderPass)
-
+/**
+ * Renderer
+ */
+const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    antialias: true,
+})
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-const unrealBloomPass = new UnrealBloomPass(new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85)
-unrealBloomPass.enabled = true
-effectComposer.addPass(unrealBloomPass)
-
-unrealBloomPass.strength = 0.1
-unrealBloomPass.radius = 0.2
-unrealBloomPass.threshold = 0.1
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 /**
- * Lights
+ * Animate
  */
-const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.02 );
-directionalLight.position.set(0,0.2,4.42)
-scene.add( directionalLight );
-
-const rectLight = new THREE.RectAreaLight("#7C94A6", 30,  2, 2 );
-rectLight.position.set(0,0,2.42);
-// const ambientLight = new THREE.AmbientLight("0xffffff", 2)
-// scene.add(ambientLight)
-scene.add(rectLight)
-
-const boxGeo = new THREE.BoxGeometry(1,1,1)
-const boxMaterial = new THREE.MeshPhysicalMaterial({  
-    color: "#F0B123",
-    transmission: 0.9,
-    thickness: 0.5,
-    roughness: 0,
-});
-const box = new THREE.Mesh(boxGeo, boxMaterial);
-box.rotation.y = 2
-box.position.y = -0.45
-box.position.z = -0.5
-scene.add(box)
-
-/**
- * Debug floor
- */
-const gfloor = new THREE.PlaneGeometry( 30, 16 );
-const wallMaterial = {
-  color: "#F0B123",
-  clearcoat: 1,
-  clearcoatRoughness: 0,
-  roughness: 0,
-  metalness: 0,
-  reflectivity: 1,
-  side: THREE.DoubleSide
-}
-const mFloor = new THREE.MeshPhysicalMaterial(wallMaterial);
-const floor = new THREE.Mesh( gfloor, mFloor );
-floor.position.y = -2
-floor.rotation.x = 1.5708
-scene.add( floor );
-
-
-let canvasTexture;
-function initWalls(canvas){
-  canvasTexture = new THREE.CanvasTexture(canvas)
-  const gfloor = new THREE.PlaneGeometry( 4,6 );
-
-  const gBackWall = new THREE.PlaneGeometry(4,2);
-  const gTopwall = new THREE.PlaneGeometry(4,6);
-  const gSideWall = new THREE.PlaneGeometry(6, 2);
-  const materialWithCanvas = {
-    side: THREE.DoubleSide, 
-    color: "#F0B123", 
-    map: canvasTexture,
-    clearcoat: 0.5,
-    clearcoatRoughness: 0,
-    roughness: 0,
-    metalness: 0,
-    reflectivity: 1,
-  }
-  const materialWall = new THREE.MeshPhysicalMaterial(materialWithCanvas);
-
-  const floor = new THREE.Mesh( gfloor, materialWall );
-  floor.position.y = -1
-  floor.rotation.x = 1.5708
-  floor.position.z = 1
-
-  const wallBack = new THREE.Mesh(gBackWall, materialWall)
-  wallBack.position.z = -2;
-
-  const wallTop = new THREE.Mesh(gTopwall, materialWall)
-  wallTop.rotation.x = Math.PI/2
-  wallTop.position.y = 1;
-  wallTop.position.z = 1;
-
-  const wallLeft = new THREE.Mesh(gSideWall, materialWall)
-  wallLeft.position.x = -2;
-  
-  const wallRight = new THREE.Mesh(gSideWall, materialWall)
-  wallLeft.rotation.y = Math.PI/2;
-  wallRight.rotation.y = Math.PI/2;
-  wallRight.position.x = 2;
-  wallLeft.position.z = 1;
-  wallRight.position.z = 1;
-
-  const walls = new THREE.Group();
-  walls.position.z = -2
-  walls.add(wallTop, wallBack, wallLeft, wallRight, floor)
-  scene.add(walls);
-}
-
-
 const clock = new THREE.Clock()
-const tick = () => {
+let lastElapsedTime = 0
+
+const renderThree = () => {
     const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - lastElapsedTime
+    lastElapsedTime = elapsedTime
+
+    // Update controls
     controls.update()
-    effectComposer.render()
-    window.requestAnimationFrame(tick)
+
+    // camera.position.x = Math.sin(elapsedTime * 0.05) * 4
+    // camera.position.y = Math.sin(elapsedTime * 0.5) * 2
+
+    // Render
+    renderer.render(scene, camera)
     sketchInstance.draw()
     canvasTexture.needsUpdate = true;
-    box.rotation.y = Math.sin(elapsedTime * 0.2) * 1.2
-    
+    // Call tick again on the next frame
+    window.requestAnimationFrame(renderThree)
 }
-
 
 /*
-* P5js Texture
+* P5 Falopa
 */
+
+// 1. Init sketch p5
+// 2. Setup, se crea el canvas 2d de p5
+// 3. Inician las paredes usando ese canvas
+// 4. Render de threejs - inicia el bucle
+
+let circles
+const count = (Math.random() * 6000) + 1000
+const min_size = (Math.random() * 50) + 50
+const max_size = (Math.random() * 300) + 180
+const w = Math.random()
 const sketch = (s) => {
   s.setup = () => {
-      // This is harcoded, can be read from the canvas
-      s.createCanvas(2560, 1440);
-      s.background("#F0B123")
-      const canvas = document.getElementById("defaultCanvas0");
-      const ctx = canvas.getContext('2d');
-      initWalls(ctx.canvas)
-      tick()
-  }
+    s.createCanvas(3000, 3000)
+    circles = new Packing(s, s.width, s.height, count, min_size, max_size, w)
+    circles.generate()
+    const canvas = document.getElementById("defaultCanvas0");
+    const ctx = canvas.getContext('2d');
+    init_walls(ctx.canvas)
+    renderThree()
 
+  }
   s.draw = () => {
-      if(s.frameCount % 10 === 0){
-        s.fill(0)
-        s.circle(s.random(s.width), s.random(s.height), 20)
-      }
+    s.background("#E6A409")
+    s.background("#E6A409")
+    circles.pos.forEach( c => {
+      s.fill(5)
+      s.circle(c.x, c.y, c.z)
+    })
   }
 }
-const sketchInstance = new p5(sketch, 'p5sketch');
+
+const sketchInstance = new p5(sketch, 'p5sketch')
