@@ -4,9 +4,11 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import Packing from './packing'
 
-const colors = ["#F12649", "#E6A409", "#00C26A", "#8E76D6", "#FFAE91"];
+const colors = ["#E9351E", "#E6A409", "#01EF77", "#01C9DF", "#ED987E"]
 const baseColor = colors[Math.floor(Math.random() * colors.length)]
-
+const mapRange = (number, in_min, in_max, out_min, out_max)  => {
+  return (number - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 /**
  * Base
  */
@@ -15,6 +17,7 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+
 
 /**
  * Sizes
@@ -44,7 +47,7 @@ window.addEventListener('resize', () => {
 // Base camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
 camera.position.z = 3
-camera.position.y = 0.5
+camera.position.y = 1
 scene.add(camera)
 
 // Controls
@@ -63,56 +66,53 @@ const box_material = new THREE.MeshPhysicalMaterial({})
 box_material.reflectivity = 0
 box_material.transmission = 1.0
 box_material.roughness = 0.1
-box_material.metalness = 0.5
+box_material.metalness = 0.1
 box_material.clearcoat = 0.3
 box_material.clearcoatRoughness = 0.25
 box_material.color = new THREE.Color(0xffffff)
 box_material.ior = 1.2
 box_material.thickness = 10.0
 
+const cubeSize = 1.4
 const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(1.4, 1.4, 1.4),
+    new THREE.BoxGeometry(cubeSize,cubeSize,cubeSize),
     box_material
 )
-cube.position.y = 0.6;
+cube.position.y = 0.6
 cube.rotateY(1)
-cube.receiveShadow = true;
+// cube.receiveShadow = true;
 cube.castShadow = true
+
+
 scene.add(cube)
 
 /*
 * Lights
 */
-const ambient_light = new THREE.AmbientLight(baseColor, 0.2)
+const ambient_light = new THREE.AmbientLight(0xffffff, 0.2)
 scene.add(ambient_light)
 
 /*
 * SpotLights
 */
-const spotLight_right = new THREE.SpotLight( 0xffffff, 40, 12, 1.2, 1, 4 );
-spotLight_right.castShadow = true;
-const spotLightX = Math.random() * 3 + 1
-const spotLightY = (Math.random() + 1) * 4
-spotLight_right.position.set( spotLightX, spotLightY, 0 );
-spotLight_right.castShadow = true;
-spotLight_right.shadow.mapSize.width = 1920;
-spotLight_right.shadow.mapSize.height = 1080;
-spotLight_right.shadow.camera.near = 0.8;
-spotLight_right.shadow.camera.far = 10;
-spotLight_right.shadow.focus = .5
-scene.add( spotLight_right );
-
-
-
-// const spotLightHelperRight = new THREE.SpotLightHelper( spotLight_right );
-// scene.add( spotLightHelperRight );
+const main_spotlight = new THREE.SpotLight( 0xffffff, 100, 10, 0.8, 1, 4 );
+main_spotlight.position.set( 0, 4 + Math.random(), 0 );
+scene.add( main_spotlight );
+const spotLightHelper = new THREE.SpotLightHelper( main_spotlight );
+main_spotlight.shadow.mapSize.width = 1920;
+main_spotlight.shadow.mapSize.height = 1080;
+main_spotlight.shadow.camera.near = 0.8;
+main_spotlight.shadow.camera.far = 10;
+main_spotlight.shadow.focus = .5
+// scene.add( spotLightHelper );
+main_spotlight.castShadow = true;
 
 /**
  * Planes
  */
 const wall_sizes = {
-  w: 6,
-  h: 6
+  w: 5,
+  h: 5
 }
 const wall_geometry = new THREE.PlaneGeometry(wall_sizes.w, wall_sizes.h);
 
@@ -120,7 +120,7 @@ let canvasTexture
 const init_walls = (cnv) => {
 
   canvasTexture = new THREE.CanvasTexture(cnv)
-  const wall_material = new THREE.MeshPhysicalMaterial({ map: canvasTexture})
+  const wall_material = new THREE.MeshPhysicalMaterial({ map: canvasTexture })
 
   // Botom top
   const bottom_wall = new THREE.Mesh(wall_geometry,wall_material)
@@ -138,23 +138,22 @@ const init_walls = (cnv) => {
   const left_wall = new THREE.Mesh(wall_geometry,wall_material)
   left_wall.position.set(-(wall_sizes.w/2),wall_sizes.w/2,0)
   left_wall.rotateY(Math.PI / 2)
-  left_wall.receiveShadow = true;
   scene.add(left_wall)
   const right_wall = new THREE.Mesh(wall_geometry,wall_material)
   right_wall.position.set(wall_sizes.w/2,wall_sizes.w/2, 0)
-  right_wall.receiveShadow = true;
   right_wall.rotateY(-Math.PI / 2)
+  right_wall.receiveShadow = true
   scene.add(right_wall)
 
   // Back y front
   const back_wall = new THREE.Mesh(wall_geometry,wall_material)
   back_wall.position.set(0,wall_sizes.w/2,-wall_sizes.w/2)
-  back_wall.receiveShadow = true;
+  right_wall.receiveShadow = true
   scene.add(back_wall)
   const front_wall = new THREE.Mesh(wall_geometry,wall_material)
   front_wall.position.set(0,wall_sizes.w/2,wall_sizes.w/2)
   front_wall.rotateY(Math.PI)
-  front_wall.receiveShadow = true;
+  front_wall.receiveShadow = true
   scene.add(front_wall)
 }
 
@@ -178,10 +177,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const clock = new THREE.Clock()
 let lastElapsedTime = 0
 
-const mapRange = (val, in_min, in_max, out_min, out_max) => {
-    return (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
+// constrols.autoRotate = true
 const renderThree = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - lastElapsedTime
@@ -189,11 +185,14 @@ const renderThree = () => {
 
     // Update controls
     controls.update()
+    controls.autoRotate = true
 
     // camera.position.x = Math.sin(elapsedTime * 0.05) * 4
     // camera.position.y = Math.sin(elapsedTime * 0.5) * 2
-    // spotLight_right.position.y += mapRange(Math.sin(elapsedTime * 0.02), -1,1, -0.05, 0.05)
-    // spotLight_right.position.x += mapRange(Math.sin(elapsedTime * 0.2), -1,1, -0.2, 0.2)
+    // main_spotlight.position.x = Math.sin(elapsedTime * 0.5) * 3
+    // main_spotlight.position.y = (Math.sin(elapsedTime * 0.3) + 1.8)  * 3
+    // main_spotlight.position.z = (Math.sin(elapsedTime * 0.8))  * 2
+    // spotLightHelper.update()
 
     // Render
     renderer.render(scene, camera)
@@ -211,6 +210,7 @@ const renderThree = () => {
 // 2. Setup, se crea el canvas 2d de p5
 // 3. Inician las paredes usando ese canvas
 // 4. Render de threejs - inicia el bucle
+
 let circles
 const count = mapRange(Math.random(), 0, 1, 1000, 3000)
 const min_size = mapRange(Math.random(), 0, 1, 10, 50)
@@ -223,6 +223,7 @@ const sketch = (s) => {
     circles.generate()
     const canvas = document.getElementById("defaultCanvas0");
     const ctx = canvas.getContext('2d');
+    maxD = s.dist(0,0, 1920,1080)
     init_walls(ctx.canvas)
     renderThree()
 
